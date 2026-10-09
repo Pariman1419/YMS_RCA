@@ -1,0 +1,33 @@
+erDiagram
+ DIM_CUSTOMER ||--o{ FACT_YIELD : customer_id
+ DIM_PRODUCT ||--o{ FACT_YIELD : product_id
+ DIM_BOM ||--o{ FACT_YIELD : bom_id
+ DIM_PROCESS ||--o{ FACT_YIELD : process_id
+ DIM_MACHINE ||--o{ FACT_YIELD : machine_id
+ DIM_DATE ||--o{ FACT_YIELD : date_id
+ DIM_PROCESS ||--o{ FACT_DEFECT : process_id
+ DIM_MACHINE ||--o{ FACT_DEFECT : machine_id
+ DIM_PROCESS ||--o{ FACT_SCRAP : process_id
+ DIM_PROCESS ||--o{ FACT_SPC : process_id
+ DIM_MACHINE ||--o{ FACT_SPC : machine_id
+ DIM_MACHINE ||--o{ EQUIPMENT_EVENT : machine_id
+ ETL_QUERY_MASTER ||--o{ ETL_JOB : query_id
+ ALERT ||--o{ ALERT_DELIVERY : alert_id
+ REPORT_SCHEDULE ||--o{ REPORT_RUN : schedule_id
+ DIM_CUSTOMER { int customer_id PK string customer_code UK string customer_name string region }
+ DIM_PRODUCT { int product_id PK string product_name string package string device string technology }
+ DIM_BOM { int bom_id PK string bom_name string revision }
+ DIM_MACHINE { int machine_id PK string machine_name UK string machine_type string production_line }
+ DIM_PROCESS { int process_id PK string process_name UK string operation_name int sequence }
+ DIM_DATE { int date_id PK date date UK int year int quarter int month int week int day }
+ FACT_YIELD { string yield_id PK datetime transaction_date PK string source string source_key string lot_no int customer_id FK int product_id FK int bom_id FK int process_id FK int machine_id FK int date_id FK int input_qty int output_qty int reject_qty int rework_qty decimal yield_percentage }
+ FACT_DEFECT { string defect_id PK string lot_no int process_id FK int machine_id FK string defect_code string defect_description int qty }
+ FACT_SCRAP { string scrap_id PK string lot_no int process_id FK int scrap_qty string scrap_reason }
+ FACT_SPC { string spc_id PK int process_id FK int machine_id FK string measurement_name float measurement_value float ucl float lcl float target }
+ ETL_QUERY_MASTER { string query_id PK string query_name string oracle_source string target_table string sql_text string schedule boolean enabled datetime last_sync_time }
+ ETL_JOB { string id PK string query_id FK string job_name datetime start_time datetime end_time string status int rows_processed int failed_records json errors }
+ ALERT { string id PK string fingerprint UK string type string severity string status }
+ ALERT_DELIVERY { string id PK string alert_id FK string channel string status int attempts }
+ EQUIPMENT_EVENT { string id PK int machine_id FK datetime started_at datetime ended_at float operating_minutes }
+ REPORT_SCHEDULE { string id PK string format string schedule json filters }
+ REPORT_RUN { string id PK string schedule_id FK string status string storage_key }

@@ -1,0 +1,40 @@
+{
+  "name": "yms-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "tsx --tsconfig tsconfig.base.json --test tests/*.test.ts",
+    "db:generate": "prisma generate --schema database/schema.prisma",
+    "db:seed": "tsx database/seed.ts",
+    "dev:web": "npm run dev -w @yms/web",
+    "dev:api": "npm run dev -w @yms/api",
+    "dev:etl": "npm run dev -w @yms/etl",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,json,css}\" \"packages/**/*.{ts,json}\" \"database/*.ts\" \"tests/*.{ts,js}\" \"docs/*.md\" README.md"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "prettier": "^3.9.9",
+    "prisma": "^6.19.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "dependencies": {
+    "@nestjs/swagger": "^11.4.7",
+    "@prisma/client": "^6.19.0",
+    "exceljs": "^4.4.0",
+    "next": "^15.5.27",
+    "pptxgenjs": "^4.0.1"
+  },
+  "overrides": {
+    "postcss": "^8.5.28",
+    "deepmerge-ts": "^8.0.2",
+    "image-size": "^2.0.4",
+    "js-yaml": "^5.4.2",
+    "uuid": "^11.1.1"
+  }
+}

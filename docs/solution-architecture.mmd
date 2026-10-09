@@ -1,0 +1,20 @@
+flowchart LR
+ ACTL[(Oracle ACTL\nACTL_BASE:1521/ACTL)] --> POOLS
+ BSM[(Oracle BSM\nBSM_BASE:1521/BSM)] --> POOLS
+ subgraph Ingestion boundary
+  POOLS[Read-only connection pools] --> ETL[ETL worker\nBounded extraction / validation / bulk load]
+  SCHED[Scheduler / query master] --> QUEUE[BullMQ / Redis]
+  QUEUE --> ETL
+ end
+ ETL --> PG[(PostgreSQL YMS_DATABASE\nPartitioned facts / conformed dimensions)]
+ ETL --> LOG[Audit / job logs / quarantine]
+ PG --> MV[Materialized daily yield aggregates]
+ MV --> API[NestJS feature modules]
+ PG --> API
+ CACHE[Redis TTL cache] <--> API
+ ENTRA[Microsoft Entra ID] --> API
+ API --> WEB[Next.js 15 / React\nAG Grid / Recharts / Tailwind / Shadcn]
+ WEB --> NGINX[Nginx / TLS edge]
+ API --> JOBS[Report jobs / alert outbox]
+ JOBS --> CHANNELS[In-app / Teams / Email]
+ API --> AI[Configured AI provider\nAggregate evidence only]

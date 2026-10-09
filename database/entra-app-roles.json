@@ -1,0 +1,74 @@
+{
+  "appRoles": [
+    {
+      "allowedMemberTypes": [
+        "User"
+      ],
+      "description": "YMS Administrator access",
+      "displayName": "Administrator",
+      "id": "33121e8f-dc49-4c85-9cab-f5153424de51",
+      "isEnabled": true,
+      "value": "Administrator"
+    },
+    {
+      "allowedMemberTypes": [
+        "User"
+      ],
+      "description": "YMS Yield Engineer access",
+      "displayName": "Yield Engineer",
+      "id": "3dedf822-3a67-4da2-839d-80d0b48b39e4",
+      "isEnabled": true,
+      "value": "YieldEngineer"
+    },
+    {
+      "allowedMemberTypes": [
+        "User"
+      ],
+      "description": "YMS QA Engineer access",
+      "displayName": "QA Engineer",
+      "id": "7578c486-cb14-45a1-82cb-f67791a48e2c",
+      "isEnabled": true,
+      "value": "QAEngineer"
+    },
+    {
+      "allowedMemberTypes": [
+        "User"
+      ],
+      "description": "YMS Production Engineer access",
+      "displayName": "Production Engineer",
+      "id": "48f3fd92-59b7-47f2-b2b4-faf81c6171a0",
+      "isEnabled": true,
+      "value": "ProductionEngineer"
+    },
+    {
+      "allowedMemberTypes": [
+        "User"
+      ],
+      "description": "YMS Process Engineer access",
+      "displayName": "Process Engineer",
+      "id": "3c8e9ddf-4d02-458c-bc9e-c2e6f947712a",
+      "isEnabled": true,
+      "value": "ProcessEngineer"
+    },
+    {
+      "allowedMemberTypes": [
+        "User"
+      ],
+      "description": "YMS Manager access",
+      "displayName": "Manager",
+      "id": "adfff9eb-78a1-41c8-a4d2-5f640acaf9cb",
+      "isEnabled": true,
+      "value": "Manager"
+    },
+    {
+      "allowedMemberTypes": [
+        "User"
+      ],
+      "description": "YMS Executive access",
+      "displayName": "Executive",
+      "id": "6fa9ea4f-ec4d-4251-bc83-fcb109b0e98f",
+      "isEnabled": true,
+      "value": "Executive"
+    }
+  ]
+}

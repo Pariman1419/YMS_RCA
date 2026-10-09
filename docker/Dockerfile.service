@@ -1,0 +1,23 @@
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY apps ./apps
+COPY packages ./packages
+COPY database ./database
+RUN npm ci --no-audit --no-fund && npm run db:generate
+ARG SERVICE=api
+RUN npm run build -w @yms/${SERVICE}
+FROM node:22-bookworm-slim
+ENV NODE_ENV=production
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/apps ./apps
+COPY --from=build --chown=node:node /app/packages ./packages
+COPY --from=build --chown=node:node /app/database ./database
+COPY --from=build /app/package.json ./package.json
+RUN mkdir uploads reports && chown node:node uploads reports
+USER node
+EXPOSE 4000
+CMD ["node","apps/api/dist/apps/api/src/main.js"]

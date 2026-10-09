@@ -1,0 +1,34 @@
+{
+  "name": "@yms/etl",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/swagger": "^11.2.0",
+    "@prisma/client": "^6.19.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^3.25.0",
+    "dotenv": "^16.6.0",
+    "bullmq": "^5.61.0",
+    "ioredis": "^5.8.0",
+    "oracledb": "^6.10.0",
+    "nodemailer": "^10.0.14",
+    "pg": "^8.16.0",
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.17.2",
+    "pptxgenjs": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/oracledb": "^6.10.0",
+    "@types/nodemailer": "^7.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/pdfkit": "^0.17.0"
+  }
+}

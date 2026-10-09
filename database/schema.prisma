@@ -1,0 +1,465 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id     Int     @id @default(autoincrement()) @map("customer_id")
+  code   String  @unique @map("customer_code")
+  name   String  @map("customer_name")
+  region String  @default("APAC")
+  yields Yield[]
+
+  @@map("dim_customer")
+}
+
+model Product {
+  id         Int     @id @default(autoincrement()) @map("product_id")
+  name       String  @map("product_name")
+  package    String
+  device     String
+  technology String
+  yields     Yield[]
+
+  @@unique([name, package, device, technology])
+  @@map("dim_product")
+}
+
+model Bom {
+  id       Int     @id @default(autoincrement()) @map("bom_id")
+  name     String  @map("bom_name")
+  revision String
+  yields   Yield[]
+
+  @@unique([name, revision])
+  @@map("dim_bom")
+}
+
+model Machine {
+  model String? @map("machine_model")
+  id           Int              @id @default(autoincrement()) @map("machine_id")
+  name         String           @unique @map("machine_name")
+  type         String           @map("machine_type")
+  line         String           @map("production_line")
+  yields       Yield[]
+  defects      Defect[]
+  measurements Spc[]
+  events       EquipmentEvent[]
+
+  @@map("dim_machine")
+}
+
+model Process {
+  id           Int      @id @default(autoincrement()) @map("process_id")
+  name         String   @unique @map("process_name")
+  operation    String   @map("operation_name")
+  sequence     Int      @default(0)
+  yields       Yield[]
+  defects      Defect[]
+  scraps       Scrap[]
+  measurements Spc[]
+
+  @@map("dim_process")
+}
+
+model CalendarDate {
+  id      Int      @id @map("date_id")
+  date    DateTime @unique @db.Date
+  year    Int
+  quarter Int
+  month   Int
+  week    Int
+  day     Int
+  yields  Yield[]
+
+  @@map("dim_date")
+}
+
+model Yield {
+  id              String       @default(uuid()) @map("yield_id")
+  source          String
+  sourceKey       String       @map("source_key")
+  lotNo           String       @map("lot_no")
+  customerId      Int          @map("customer_id")
+  productId       Int          @map("product_id")
+  bomId           Int          @map("bom_id")
+  processId       Int          @map("process_id")
+  machineId       Int          @map("machine_id")
+  dateId          Int          @map("date_id")
+  transactionDate DateTime     @map("transaction_date") @db.Timestamptz(3)
+  factory         String
+  shift           String
+  operator        String
+  inputQty        Int          @map("input_qty")
+  outputQty       Int          @map("output_qty")
+  rejectQty       Int          @map("reject_qty")
+  reworkQty       Int          @map("rework_qty")
+  unitCost        Decimal      @default(0) @map("unit_cost") @db.Decimal(18, 4)
+  yieldPercentage Decimal      @map("yield_percentage") @db.Decimal(8, 4)
+  customer        Customer     @relation(fields: [customerId], references: [id])
+  product         Product      @relation(fields: [productId], references: [id])
+  bom             Bom          @relation(fields: [bomId], references: [id])
+  process         Process      @relation(fields: [processId], references: [id])
+  machine         Machine      @relation(fields: [machineId], references: [id])
+  calendar        CalendarDate @relation(fields: [dateId], references: [id])
+
+  @@id([id, transactionDate])
+  @@unique([source, sourceKey, transactionDate])
+  @@index([lotNo, transactionDate])
+  @@index([dateId, customerId, productId])
+  @@map("fact_yield")
+}
+
+model Defect {
+  id          String   @id @default(uuid()) @map("defect_id")
+  source      String
+  sourceKey   String   @map("source_key")
+  lotNo       String   @map("lot_no")
+  processId   Int      @map("process_id")
+  machineId   Int      @map("machine_id")
+  code        String   @map("defect_code")
+  description String   @map("defect_description")
+  qty         Int
+  occurredAt  DateTime @map("occurred_at") @db.Timestamptz(3)
+  process     Process  @relation(fields: [processId], references: [id])
+  machine     Machine  @relation(fields: [machineId], references: [id])
+
+  @@unique([source, sourceKey])
+  @@index([occurredAt, code])
+  @@index([lotNo])
+  @@map("fact_defect")
+}
+
+model Scrap {
+  id         String   @id @default(uuid()) @map("scrap_id")
+  source     String
+  sourceKey  String   @map("source_key")
+  lotNo      String   @map("lot_no")
+  processId  Int      @map("process_id")
+  qty        Int      @map("scrap_qty")
+  reason     String   @map("scrap_reason")
+  occurredAt DateTime @map("occurred_at") @db.Timestamptz(3)
+  process    Process  @relation(fields: [processId], references: [id])
+
+  @@unique([source, sourceKey])
+  @@index([occurredAt, reason])
+  @@index([lotNo])
+  @@map("fact_scrap")
+}
+
+model Spc {
+  id              String   @id @default(uuid()) @map("spc_id")
+  source          String
+  sourceKey       String   @map("source_key")
+  processId       Int      @map("process_id")
+  machineId       Int      @map("machine_id")
+  measurementName String   @map("measurement_name")
+  value           Float    @map("measurement_value")
+  ucl             Float
+  lcl             Float
+  target          Float
+  sampleSize      Int      @default(5) @map("sample_size")
+  subgroup        String
+  measuredAt      DateTime @map("measured_at") @db.Timestamptz(3)
+  process         Process  @relation(fields: [processId], references: [id])
+  machine         Machine  @relation(fields: [machineId], references: [id])
+
+  @@unique([source, sourceKey])
+  @@index([processId, machineId, measurementName, measuredAt])
+  @@map("fact_spc")
+}
+
+model EtlQuery {
+  id               String    @id @default(uuid()) @map("query_id")
+  queryName        String    @unique @map("query_name")
+  oracleSource     String    @map("oracle_source")
+  targetTable      String    @map("target_table")
+  sqlText          String    @map("sql_text")
+  schedule         String
+  enabled          Boolean   @default(false)
+  loadMode         String    @default("incremental") @map("load_mode")
+  lastSyncTime     DateTime? @map("last_sync_time") @db.Timestamptz(3)
+  nextRunAt        DateTime  @default(now()) @map("next_run_at") @db.Timestamptz(3)
+  version          Int       @default(1)
+  lotScope         String    @default("all") @map("lot_scope")
+  anchorSource     String    @default("1") @map("anchor_source")
+  lotBatchSize     Int       @default(100) @map("lot_batch_size")
+  dependsOnQueryId String?   @map("depends_on_query_id")
+  jobs             EtlJob[]
+
+  @@map("etl_query_master")
+}
+
+model EtlJob {
+  id               String    @id @default(uuid())
+  queryId          String    @map("query_id")
+  parentJobId      String?   @map("parent_job_id")
+  jobName          String    @map("job_name")
+  startTime        DateTime  @default(now()) @map("start_time") @db.Timestamptz(3)
+  endTime          DateTime? @map("end_time") @db.Timestamptz(3)
+  status           String
+  rowsProcessed    Int       @default(0) @map("rows_processed")
+  failedRecords    Int       @default(0) @map("failed_records")
+  errors           Json      @default("[]")
+  loadMode         String?   @map("load_mode")
+  queryVersion     Int?      @map("query_version")
+  phase            String    @default("complete")
+  rowsRead         Int       @default(0) @map("rows_read")
+  batchesProcessed Int       @default(0) @map("batches_processed")
+  totalLots        Int?      @map("total_lots")
+  processedLots    Int       @default(0) @map("processed_lots")
+  progressPercent  Float?    @map("progress_percent")
+  heartbeatAt      DateTime? @map("heartbeat_at") @db.Timestamptz
+  configuration    Json?
+  query            EtlQuery  @relation(fields: [queryId], references: [id])
+
+  @@index([startTime])
+  @@map("etl_job")
+}
+
+model Quarantine {
+  id        String   @id @default(uuid())
+  jobId     String   @map("job_id")
+  sourceKey String?  @map("source_key")
+  errors    Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([jobId])
+  @@map("etl_quarantine")
+}
+
+model Audit {
+  id        String   @id @default(uuid())
+  actor     String
+  action    String
+  resource  String
+  details   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+model Alert {
+  id             String          @id @default(uuid())
+  fingerprint    String          @unique
+  type           String
+  severity       String
+  title          String
+  details        Json
+  status         String          @default("open")
+  acknowledgedBy String?         @map("acknowledged_by")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deliveries     AlertDelivery[]
+
+  @@index([status, createdAt])
+  @@map("alert")
+}
+
+model AlertDelivery {
+  id            String   @id @default(uuid())
+  alertId       String   @map("alert_id")
+  channel       String
+  status        String   @default("pending")
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at")
+  lastError     String?  @map("last_error")
+  alert         Alert    @relation(fields: [alertId], references: [id])
+
+  @@unique([alertId, channel])
+  @@map("alert_delivery")
+}
+
+model AlertRule {
+  id        String  @id @default(uuid())
+  name      String  @unique
+  type      String
+  threshold Float
+  enabled   Boolean @default(true)
+
+  @@map("alert_rule")
+}
+
+model LotComment {
+  id        String   @id @default(uuid())
+  lotNo     String   @map("lot_no")
+  author    String
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([lotNo])
+  @@map("lot_comment")
+}
+
+model Attachment {
+  id         String   @id @default(uuid())
+  lotNo      String   @map("lot_no")
+  name       String
+  storageKey String   @unique @map("storage_key")
+  mimeType   String   @map("mime_type")
+  size       Int
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([lotNo])
+  @@map("attachment")
+}
+
+model EquipmentEvent {
+  id               String   @id @default(uuid())
+  machineId        Int      @map("machine_id")
+  startedAt        DateTime @map("started_at")
+  endedAt          DateTime @map("ended_at")
+  operatingMinutes Float    @map("operating_minutes")
+  machine          Machine  @relation(fields: [machineId], references: [id])
+
+  @@map("equipment_event")
+}
+
+model ReportSchedule {
+  id        String      @id @default(uuid())
+  name      String
+  format    String
+  schedule  String
+  filters   Json
+  nextRunAt DateTime    @default(now()) @map("next_run_at")
+  enabled   Boolean     @default(true)
+  createdBy String      @map("created_by")
+  runs      ReportRun[]
+
+  @@map("report_schedule")
+}
+
+model ReportRun {
+  id         String         @id @default(uuid())
+  scheduleId String         @map("schedule_id")
+  status     String
+  storageKey String?        @map("storage_key")
+  error      String?
+  createdAt  DateTime       @default(now()) @map("created_at")
+  schedule   ReportSchedule @relation(fields: [scheduleId], references: [id])
+
+  @@map("report_run")
+}
+
+model AppUser {
+  id             String        @id @map("user_id") @db.Uuid
+  username       String        @unique
+  displayName    String        @map("display_name")
+  passwordHash   String        @map("password_hash")
+  roles          String[]
+  enabled        Boolean       @default(true)
+  failedAttempts Int           @default(0) @map("failed_attempts")
+  lockedUntil    DateTime?     @map("locked_until") @db.Timestamptz
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime      @default(now()) @map("updated_at") @db.Timestamptz
+  sessions       AuthSession[]
+
+  @@map("app_user")
+}
+
+model AuthSession {
+  tokenHash String   @id @map("token_hash")
+  userId    String   @map("user_id") @db.Uuid
+  user      AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId], map: "auth_session_user_idx")
+  @@index([expiresAt], map: "auth_session_expiry_idx")
+  @@map("auth_session")
+}
+
+model LotRegistry {
+  assemblySource String   @map("assembly_source")
+  lotNo          String   @map("lot_no")
+  customerId     Int      @map("customer_id")
+  productId      Int      @map("product_id")
+  bomId          Int      @map("bom_id")
+  factory        String
+  assemblyDate   DateTime @map("assembly_date") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@id([assemblySource, lotNo])
+  @@map("lot_registry")
+}
+
+model LotProcess {
+  id                String    @id @db.Uuid
+  source            String
+  sourceKey         String    @map("source_key")
+  assemblySource    String    @map("assembly_source")
+  lotNo             String    @map("lot_no")
+  sourceLotNo       String?   @map("source_lot_no")
+  processId         Int       @map("process_id")
+  machineId         Int       @map("machine_id")
+  operationSequence Decimal?  @map("operation_sequence")
+  processCode       String?   @map("process_code")
+  startedAt         DateTime? @map("started_at") @db.Timestamptz
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz
+  inputQty          BigInt?   @map("input_qty")
+  outputQty         BigInt?   @map("output_qty")
+  rejectQty         BigInt?   @map("reject_qty")
+  reworkQty         BigInt?   @map("rework_qty")
+  yieldPercentage   Decimal?  @map("yield_percentage") @db.Decimal(12, 6)
+  status            String
+  qualityStatus     String    @map("quality_status")
+  qualityErrors     Json      @default("[]") @map("quality_errors")
+  operatorName      String?   @map("operator_name")
+  shift             String?
+  rawPayload        Json      @map("raw_payload")
+  importedAt        DateTime  @default(now()) @map("imported_at") @db.Timestamptz
+
+  @@unique([source, sourceKey])
+  @@map("fact_lot_process")
+}
+
+model LotDefect {
+  id                String    @id @db.Uuid
+  source            String
+  sourceKey         String    @map("source_key")
+  assemblySource    String    @map("assembly_source")
+  lotNo             String    @map("lot_no")
+  sourceLotNo       String?   @map("source_lot_no")
+  processId         Int       @map("process_id")
+  machineId         Int       @map("machine_id")
+  operationSequence Decimal?  @map("operation_sequence")
+  processSourceKey  String?   @map("process_source_key")
+  code              String    @map("defect_code")
+  description       String    @map("defect_description")
+  qty               BigInt?
+  reworkQty         BigInt?   @map("rework_qty")
+  occurredAt        DateTime? @map("occurred_at") @db.Timestamptz
+  qualityStatus     String    @map("quality_status")
+  qualityErrors     Json      @default("[]") @map("quality_errors")
+  rawPayload        Json      @map("raw_payload")
+  importedAt        DateTime  @default(now()) @map("imported_at") @db.Timestamptz
+
+  @@unique([source, sourceKey])
+  @@map("fact_lot_defect")
+}
+
+model LotMaterial {
+  id             String   @id @default(uuid()) @db.Uuid
+  source         String
+  sourceKey      String   @map("source_key")
+  assemblySource String   @map("assembly_source")
+  lotNo          String   @map("lot_no")
+  sequenceNo     Decimal  @map("sequence_no")
+  itemGroup      String?  @map("item_group")
+  sizeType       String?  @map("size_type")
+  itemNo         String?  @map("item_no")
+  itemLotNo      String?  @map("item_lot_no")
+  rawPayload     Json     @map("raw_payload")
+  importedAt     DateTime @default(now()) @map("imported_at") @db.Timestamptz
+
+  @@unique([source, sourceKey])
+  @@index([assemblySource, lotNo, sequenceNo, sourceKey], map: "lot_material_route_idx")
+  @@index([itemLotNo, itemNo], map: "lot_material_trace_idx")
+  @@map("fact_lot_material")
+}

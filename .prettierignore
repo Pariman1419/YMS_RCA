@@ -1,0 +1,9 @@
+node_modules
+**/node_modules
+**/.next
+**/dist
+package-lock.json
+.env*
+**/.env*
+reports
+uploads

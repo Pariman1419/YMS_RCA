@@ -1,0 +1,7 @@
+# Lot yield investigation
+
+Open Lot explorer. Below target only defaults on, with an investigation target of 98%. The server selects the latest assembly completion per source/lot within the active date range, filters below the selected target, and paginates in ascending yield order. Turn the checkbox off to view all lots in completion-date order.
+
+Select a lot number or View lot details. Verify recorded yield against output / input × 100, quantity reconciliation, and the gap to the investigation target. The target is not a product specification. Review operation yields in route order, then select an operation to see its machine and reject evidence matched by operation sequence. Process chart coverage is limited to the loaded history page, with pagination available below. Invalid quality records are excluded from the chart. Operation percentages have separate denominators and are not cumulative assembly yield. Reject evidence identifies investigation candidates; it does not establish root cause or distinguish planned unit removals without disposition verification.
+
+Verified 2026-10-09: frontend/backend type checks and production builds passed; authenticated low-yield API returned only yields below 98% in ascending order; all-lot mode returned a larger selection; lot IS3PT2317.8 returned assembly yield 91.0118%, 34 process records, and 29 reject records. No Oracle queries are performed by these screens.

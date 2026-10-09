@@ -1,0 +1,124 @@
+name: nexus-yms
+services:
+ postgres:
+  image: postgres:16-alpine
+  environment:
+   POSTGRES_USER: ${POSTGRES_USER:-yms}
+   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+   POSTGRES_DB: YMS_DATABASE
+  ports: ["127.0.0.1:5432:5432"]
+  volumes:
+   - pgdata:/var/lib/postgresql/data
+   - ./database/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+   - ./database/002_analytics.sql:/docker-entrypoint-initdb.d/002_analytics.sql:ro
+   - ./database/004_alert_rules.sql:/docker-entrypoint-initdb.d/004_alert_rules.sql:ro
+   - ./database/005_local_users.sql:/docker-entrypoint-initdb.d/005_local_users.sql:ro
+   - ./database/006_lot_history.sql:/docker-entrypoint-initdb.d/006_lot_history.sql:ro
+   - ./database/007_etl_dependencies.sql:/docker-entrypoint-initdb.d/007_etl_dependencies.sql:ro
+   - ./database/008_lot_material.sql:/docker-entrypoint-initdb.d/008_lot_material.sql:ro
+   - ./database/009_ai_assistance.sql:/docker-entrypoint-initdb.d/009_ai_assistance.sql:ro
+   - ./database/010_ai_lot_rca.sql:/docker-entrypoint-initdb.d/010_ai_lot_rca.sql:ro
+  healthcheck:
+   test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d YMS_DATABASE"]
+   interval: 5s
+   timeout: 5s
+   retries: 20
+  restart: unless-stopped
+ redis:
+  image: redis:7-alpine
+  command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+  ports: ["127.0.0.1:6379:6379"]
+  volumes: ["redisdata:/data"]
+  healthcheck:
+   test: ["CMD", "redis-cli", "ping"]
+   interval: 5s
+   timeout: 5s
+   retries: 20
+  restart: unless-stopped
+ api:
+  extra_hosts: ["host.docker.internal:host-gateway"]
+  build:
+   context: .
+   dockerfile: docker/Dockerfile.service
+   args: {SERVICE: api}
+  environment:
+   NODE_ENV: production
+   AUTH_MODE: ${AUTH_MODE:-local}
+   BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-admin}
+   AUTH_DEMO: "false"
+   ENTRA_TENANT_ID: ${ENTRA_TENANT_ID}
+   ENTRA_AUDIENCE: ${ENTRA_AUDIENCE}
+   WEB_ORIGIN: ${WEB_ORIGIN}
+   OLLAMA_BASE_URL: ${OLLAMA_DOCKER_BASE_URL:-http://host.docker.internal:11434}
+   AI_BASE_URL: ${AI_BASE_URL:-http://localhost:11434/v1}
+   AI_MODEL: ${AI_MODEL:-llama3}
+   AI_API_KEY: ${AI_API_KEY:-}
+   AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+   AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-}
+   AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-2024-10-21}
+   DATABASE_URL: ${API_DATABASE_URL:?Set API_DATABASE_URL to the yms_api PostgreSQL connection}
+   REDIS_URL: redis://redis:6379
+   UPLOAD_DIR: /app/uploads
+  depends_on:
+   postgres: {condition: service_healthy}
+   redis: {condition: service_healthy}
+  volumes: ["uploads:/app/uploads", "reports:/app/reports:ro"]
+  restart: unless-stopped
+ jdbc:
+  build:
+   context: .
+   dockerfile: docker/Dockerfile.jdbc
+  environment:
+   JDBC_BRIDGE_TOKEN: ${JDBC_BRIDGE_TOKEN:?Set JDBC_BRIDGE_TOKEN}
+   SOURCE_DB_1_HOST: ${SOURCE_DB_1_HOST}
+   SOURCE_DB_1_PORT: ${SOURCE_DB_1_PORT:-1521}
+   SOURCE_DB_1_SERVICE: ${SOURCE_DB_1_SERVICE}
+   SOURCE_DB_1_USERNAME: ${SOURCE_DB_1_USERNAME}
+   SOURCE_DB_1_PASSWORD: ${SOURCE_DB_1_PASSWORD}
+   SOURCE_DB_2_HOST: ${SOURCE_DB_2_HOST}
+   SOURCE_DB_2_PORT: ${SOURCE_DB_2_PORT:-1521}
+   SOURCE_DB_2_SERVICE: ${SOURCE_DB_2_SERVICE}
+   SOURCE_DB_2_USERNAME: ${SOURCE_DB_2_USERNAME}
+   SOURCE_DB_2_PASSWORD: ${SOURCE_DB_2_PASSWORD}
+  restart: unless-stopped
+ etl:
+  build:
+   context: .
+   dockerfile: docker/Dockerfile.service
+   args: {SERVICE: etl}
+  command: ["node", "apps/etl/dist/apps/etl/src/main.js"]
+  env_file: .env
+  environment:
+   NODE_ENV: production
+   DATABASE_URL: ${ETL_DATABASE_URL:?Set ETL_DATABASE_URL to the yms_etl PostgreSQL connection}
+   ORACLE_TRANSPORT: jdbc
+   JDBC_BRIDGE_URL: http://jdbc:4010
+   REDIS_URL: redis://redis:6379
+  depends_on:
+   postgres: {condition: service_healthy}
+   redis: {condition: service_healthy}
+  volumes: ["reports:/app/reports"]
+  restart: unless-stopped
+ web:
+  build:
+   context: .
+   dockerfile: docker/Dockerfile.web
+   args:
+    NEXT_PUBLIC_AUTH_MODE: ${AUTH_MODE:-local}
+    NEXT_PUBLIC_AUTH_DEMO: "false"
+    NEXT_PUBLIC_ENTRA_CLIENT_ID: ${NEXT_PUBLIC_ENTRA_CLIENT_ID}
+    NEXT_PUBLIC_ENTRA_TENANT_ID: ${NEXT_PUBLIC_ENTRA_TENANT_ID}
+    NEXT_PUBLIC_ENTRA_SCOPE: ${NEXT_PUBLIC_ENTRA_SCOPE}
+  depends_on: [api]
+  restart: unless-stopped
+ nginx:
+  image: nginx:1.28-alpine
+  ports: ["8080:80"]
+  volumes: ["./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro"]
+  depends_on: [web,api]
+  restart: unless-stopped
+volumes:
+ pgdata:
+ redisdata:
+ uploads:
+ reports:
